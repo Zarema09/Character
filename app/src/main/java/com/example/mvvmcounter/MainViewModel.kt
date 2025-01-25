@@ -1,33 +1,45 @@
 package com.example.mvvmcounter
 
-import android.graphics.Color
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.mvvmcounter.data.CartoonApiService
+import com.example.mvvmcounter.data.model.BaseResponse
+import com.example.mvvmcounter.data.model.Character
+import dagger.hilt.android.lifecycle.HiltViewModel
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import javax.inject.Inject
 
-class MainViewModel:   ViewModel() {
-    private val model = CounterModel()
-    val counterData  =  MutableLiveData<Int>()
+@HiltViewModel
+class MainViewModel @Inject constructor(
 
-    val toastMessage = MutableLiveData<String>()
-    val textColor = MutableLiveData<Int>()
+    private val api: CartoonApiService,
 
-    private fun update(){
-        counterData.value = model.count
-        when(model.count){
-            10-> toastMessage.value= "Поздравляем!"
-            15->textColor.value = Color.GREEN
-                else -> textColor.value = Color.BLACK
-        }
-    }
-    fun onIncrement (){
-        model.increment()
-        counterData.value = model.count
-        update()
-    }
+) : ViewModel() {
 
-    fun onDecrement (){
-        model.decrement()
-        counterData.value = model.count
-        update()
+    private val _charactersData = MutableLiveData<List<Character>?>()
+    val charactersData: MutableLiveData<List<Character>?>
+        get() = _charactersData
+
+    private val _errorData = MutableLiveData<String>()
+    val errorData: LiveData<String> get() = _errorData
+
+    fun getCharacters() {
+        api.getCharacters().enqueue(object : Callback<BaseResponse> {
+            override fun onResponse(call: Call<BaseResponse>, response: Response<BaseResponse>) {
+                if (response.isSuccessful && response.body() != null) {
+                    response.body()?.let {
+                        _charactersData.postValue(it.characters)
+                    }
+                }
+            }
+
+            override fun onFailure(call: Call<BaseResponse>, t: Throwable) {
+                _errorData.postValue(t.localizedMessage ?: "Unknown error")
+            }
+
+        })
     }
 }
